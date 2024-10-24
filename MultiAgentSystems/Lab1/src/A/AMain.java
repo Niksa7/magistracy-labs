@@ -18,7 +18,7 @@ public class AMain extends Agent {
                 ACLMessage msg = receive();
                 if (msg != null) {
                     // Получение локального имени агента и его сообщения
-                    System.out.println(" - " + myAgent.getLocalName()+ " received: "+ msg.getContent());
+                    System.out.println(" - " + myAgent.getLocalName()+ " received: "+ msg.getContent() + " from " + msg.getSender().getLocalName());
                     // Блок поведения, пока в очереди сообщ. не появиться хотя бы одно сообщ.
                     block();
                 }
@@ -36,13 +36,13 @@ public class AMain extends Agent {
             e.printStackTrace();
         }
 
-        for (int i=0; i<4; i++) {
+        for (int i=0; i < agents.length -1; i++) {
             AID agentID = agents[i].getName();
             if (!agentID.equals(this.getAID())) {
                 ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
                 msg.addReceiver(agentID); // id агента, которому отправлено сообщение
                 msg.setLanguage("English");
-                msg.setContent("Ping");
+                msg.setContent("Hello from " + getLocalName()+ " to " + agentID.getLocalName());
                 send(msg);
             }
         }
