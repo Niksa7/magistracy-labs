@@ -53,20 +53,27 @@ public class CashierAgent extends Agent {
 
                         case ACLMessage.INFORM_REF:
                             // Получить итоговую стоимость корзины
-                            String totalCost = msg.getContent();
-                            System.out.println("Кассир получил итоговую стоимость корзины: " + totalCost + " руб.");
+                            String receipt = msg.getContent();
+                            System.out.println("Кассир сформировал чек:\n" + receipt);
 
                             // Отправить запрос на подтверждение оплаты покупателю
                             ACLMessage paymentRequest = new ACLMessage(ACLMessage.REQUEST);
                             paymentRequest.addReceiver(buyerMsg.getSender());
-                            paymentRequest.setContent("Итоговая стоимость: " + totalCost + " руб. Подтвердите оплату.");
+                            paymentRequest.setContent(receipt);
                             send(paymentRequest);
-                            System.out.println("Кассир отправил запрос на подтверждение оплаты покупателю.");
+                            System.out.println("Кассир отправил чек покупателю.");
                             break;
 
                         case ACLMessage.CONFIRM:
                             // Получить подтверждение оплаты от покупателя
                             System.out.println("Кассир получил подтверждение оплаты от " + msg.getSender().getLocalName());
+                            // Уведомить базу данных об оплате
+                            ACLMessage paymentMsg = new ACLMessage(ACLMessage.INFORM);
+                            paymentMsg.addReceiver(getAID("db"));
+                            paymentMsg.setContent("Оплата получена");
+                            paymentMsg.setConversationId(msg.getConversationId());
+                            send(paymentMsg);
+                            System.out.println("Кассир уведомил базу данных об оплате.");
                             System.out.println("Обработка завершена. Кассир ждет следующего покупателя.");
                             break;
 

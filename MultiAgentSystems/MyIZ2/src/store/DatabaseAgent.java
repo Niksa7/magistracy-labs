@@ -20,7 +20,7 @@ public class DatabaseAgent extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println(getLocalName() + " запускается...");
+        System.out.println("[DB: " + getLocalName() + "] запускается.");
 
         doWait(20000);
 
@@ -48,17 +48,19 @@ public class DatabaseAgent extends Agent {
                             String cart = msg.getContent();
                             System.out.println("База данных получила запрос на обработку корзины: " + cart);
 
-                            int totalCost = processCart(cart);
+                            String totalCost = processCart(cart);
 
                             // Вернуть итоговую стоимость кассиру
                             ACLMessage reply = msg.createReply();
                             reply.setPerformative(ACLMessage.INFORM_REF);
                             reply.setContent(String.valueOf(totalCost));
                             send(reply);
-                            System.out.println("База данных отправила итоговую стоимость: " + totalCost + " руб.");
+                            System.out.println("База данных отправила ответ.");
                             break;
+                        case ACLMessage.INFORM:
+                            System.out.println("База данных получила подтверждение платежа");
                         default:
-                            System.out.println("Неизвестный тип сообщения получен базой данных.");
+//                            System.out.println("Неизвестный тип сообщения получен базой данных.");
                     }
                 } else {
                     block();
@@ -75,13 +77,16 @@ public class DatabaseAgent extends Agent {
             inventory.put(product, new Product(quantity, price));
         }
 
-        System.out.println("База данных инициализирована:");
+        System.out.println("\n[DB] База данных инициализирована:\n");
         inventory.forEach((product, details) -> System.out.println(product + ": " + details));
     }
 
-    private int processCart(String cart) {
+    private String processCart(String cart) {
+        StringBuilder receiptDetails = new StringBuilder();
         String[] items = cart.split(";");
         int totalCost = 0;
+
+        receiptDetails.append("\nЧек:\n");
 
         for (String item : items) {
             String[] productInfo = item.split(":");
@@ -90,20 +95,27 @@ public class DatabaseAgent extends Agent {
 
             if (inventory.containsKey(product) && inventory.get(product).getQuantity() >= quantity) {
                 Product itemDetails = inventory.get(product);
-                totalCost += itemDetails.getPrice() * quantity;
+                int itemCost = itemDetails.getPrice() * quantity;
+                totalCost += itemCost;
 
                 // Обновить количество товара
                 itemDetails.setQuantity(itemDetails.getQuantity() - quantity);
+
+                // Добавить информацию о товаре в чек
+                receiptDetails.append(product)
+                        .append(", количество: ").append(quantity)
+                        .append(", цена за единицу: ").append(itemDetails.getPrice())
+                        .append(", стоимость: ").append(itemCost).append(" руб.\n");
             } else {
-                System.out.println("Недостаточно товара: " + product);
+                receiptDetails.append(product)
+                        .append(": недостаточное количество на складе.\n");
             }
         }
 
-        // Формирование обновленного состояния склада
-        System.out.println("Обновленный склад:");
-        inventory.forEach((product, details) -> System.out.println(product + ": " + details));
-        return totalCost;
+        receiptDetails.append("\nИтоговая стоимость: ").append(totalCost).append(" руб.");
+        return receiptDetails.toString();
     }
+
 
     private static class Product {
         private int quantity;

@@ -21,10 +21,11 @@ public class BuyerAgent extends Agent {
     protected void setup() {
         System.out.println(getLocalName() + " запускается.");
 
+        doWait(25000);
+
         addBehaviour(new TickerBehaviour(this, 5000) {
             @Override
             protected void onTick() {
-                // Найти кассиров
                 DFAgentDescription template = new DFAgentDescription();
                 ServiceDescription sd = new ServiceDescription();
                 sd.setType("cashier-agent");
@@ -39,61 +40,56 @@ public class BuyerAgent extends Agent {
                     fe.printStackTrace();
                 }
 
-                if (cashierAgents != null && cashierAgents.length > 0) {
-                    addBehaviour(new OneShotBehaviour() {
-                        @Override
-                        public void action() {
-                            // Сгенерировать корзину
-                            String cart = generateCart();
-                            System.out.println("Корзина: " + cart);
+                addBehaviour(new OneShotBehaviour() {
+                    @Override
+                    public void action() {
+                        String cart = generateCart();
+                        System.out.println("Корзина: " + cart);
 
-                            // Выбрать случайного кассира
-                            AID selectedCashier = cashierAgents[rand.nextInt(cashierAgents.length)];
+                        // Выбрать случайного кассира
+                        AID selectedCashier = cashierAgents[rand.nextInt(cashierAgents.length)];
 
-                            // Отправить корзину выбранному кассиру
-                            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-                            msg.addReceiver(selectedCashier);
-                            msg.setContent(cart);
-                            send(msg);
-                            System.out.println(getLocalName() + " отправил корзину кассиру: " + selectedCashier.getLocalName());
-                        }
-                    });
+                        // Отправить корзину кассиру
+                        ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+                        msg.addReceiver(selectedCashier); // Отправляем первому кассиру
+                        msg.setContent(cart);
+                        send(msg);
+                        System.out.println(getLocalName() + " отправил корзину кассиру.");
+                    }
+                });
 
-                    // Обработка сообщений оплаты
-                    addBehaviour(new CyclicBehaviour() {
-                        @Override
-                        public void action() {
-                            ACLMessage msg = receive();
-                            if (msg != null) {
-                                switch (msg.getPerformative()) {
-                                    case ACLMessage.REQUEST:
-                                        // Получить запрос на оплату
-                                        String paymentDetails = msg.getContent();
-                                        System.out.println(getLocalName() + " получил запрос на оплату: " + paymentDetails);
+                // Обработка сообщений оплаты
+                addBehaviour(new CyclicBehaviour() {
+                    @Override
+                    public void action() {
+                        ACLMessage msg = receive();
+                        if (msg != null) {
+                            switch (msg.getPerformative()) {
+                                case ACLMessage.REQUEST:
+                                    // Получить запрос на оплату
+                                    String paymentDetails = msg.getContent();
+                                    System.out.println(getLocalName() + " получил запрос на оплату: " + paymentDetails);
 
-                                        // Подтвердить оплату
-                                        ACLMessage paymentConfirmation = new ACLMessage(ACLMessage.CONFIRM);
-                                        paymentConfirmation.addReceiver(msg.getSender());
-                                        paymentConfirmation.setContent("Оплата подтверждена");
-                                        send(paymentConfirmation);
-                                        System.out.println(getLocalName() + " подтвердил оплату.");
+                                    // Подтвердить оплату
+                                    ACLMessage paymentConfirmation = new ACLMessage(ACLMessage.CONFIRM);
+                                    paymentConfirmation.addReceiver(msg.getSender());
+                                    paymentConfirmation.setContent("Оплата подтверждена");
+                                    send(paymentConfirmation);
+                                    System.out.println(getLocalName() + " подтвердил оплату.");
 
-                                        // Завершить работу агента
-                                        System.out.println(getLocalName() + " завершает работу.");
-                                        doDelete();
-                                        break;
+                                    // Завершить работу агента
+                                    System.out.println(getLocalName() + " завершает работу.");
+                                    doDelete();
+                                    break;
 
-                                    default:
-                                        System.out.println("Неизвестный тип сообщения получен покупателем.");
-                                }
-                            } else {
-                                block();
+                                default:
+                                    System.out.println("Неизвестный тип сообщения получен покупателем.");
                             }
+                        } else {
+                            block();
                         }
-                    });
-                } else {
-                    System.out.println("Кассиры не найдены. Покупатель будет ожидать.");
-                }
+                    }
+                });
             }
         });
     }
