@@ -17,10 +17,14 @@ public class CandidateAgent extends Agent {
     private int rating;
     private int age;
     private boolean assigned = false;
+    private final int maxAttempts = 2;
+    private int attemptCount = 0;
 
     @Override
     protected void setup() {
         System.out.println("Agent " + getAID().getName() + " is ready.");
+
+
 
         // Ожидание для сниффера
         doWait(30000);
@@ -34,7 +38,15 @@ public class CandidateAgent extends Agent {
             addBehaviour(new TickerBehaviour(this, 5000) {
                 @Override
                 protected void onTick() {
-                    System.out.println("Candidate agent " + getLocalName() + " on tick...");
+
+                    if (attemptCount >= maxAttempts) {
+                        System.out.println(getLocalName() + " log: Max attempts reached. Stopping search.\n" + getLocalName() + " don't found any job here...");
+                        myAgent.doDelete();
+                        return;
+                    }
+                    attemptCount++;
+                    System.out.println("Candidate agent " + getLocalName() + " on tick attempt " + attemptCount);
+
                     // Обновляем список агентов работы
                     DFAgentDescription template = new DFAgentDescription();
                     ServiceDescription sd = new ServiceDescription();
@@ -42,7 +54,7 @@ public class CandidateAgent extends Agent {
                     template.addServices(sd);
                     try {
                         DFAgentDescription[] result = DFService.search(myAgent, template);
-                        System.out.println("Found the following job agents:");
+                        System.out.println(getLocalName() + " log : Found the following job agents:");
                         jobAgents = new AID[result.length];
                         for (int i = 0; i < result.length; i++) {
                             jobAgents[i] = result[i].getName();
@@ -52,11 +64,12 @@ public class CandidateAgent extends Agent {
                         fe.printStackTrace();
                     }
 
+
                     myAgent.addBehaviour(new RequestPerformer());
                 }
             });
         } else {
-            System.out.println("Invalid arguments. Expecting: rating, maxAge, salary");
+            System.out.println(getLocalName() + " log : Invalid arguments. Expecting: rating, maxAge, salary");
             doDelete();
         }
     }
@@ -77,7 +90,7 @@ public class CandidateAgent extends Agent {
 
         @Override
         public void action() {
-            System.out.println("RequestPerformer.action " + getLocalName() + ": step: " + step);
+            System.out.println("Attempt to get a job on a " + getLocalName() + ": step: " + step);
             switch (step) {
                 case 0:
                     ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
@@ -142,7 +155,7 @@ public class CandidateAgent extends Agent {
 
         @Override
         public boolean done() {
-            return ((step == 2 && bestJob == null) || step == 4);
+            return (attemptCount >= maxAttempts || (step == 2 && bestJob == null) || step == 4);
         }
     }
 }

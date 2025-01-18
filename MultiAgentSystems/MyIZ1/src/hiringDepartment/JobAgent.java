@@ -50,13 +50,18 @@ public class JobAgent extends Agent {
             addBehaviour(new AssignCandidateServer());
         }
         else {
-            System.out.println("Invalid arguments. Expecting: rating, maxAge, salary");
+            System.out.println(getLocalName() + " log: Invalid arguments. Expecting: rating, maxAge, salary");
             doDelete();
         }
     }
 
     @Override
     protected void takeDown() {
+        try {
+            DFService.deregister(this);
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
         System.out.println(getAID().getName() + " is terminated.");
     }
 
@@ -66,13 +71,13 @@ public class JobAgent extends Agent {
     private class OfferRequestsServer extends CyclicBehaviour {
         @Override
         public void action() {
-            System.out.println("JobHiringAgent.OfferRequestsServer.action");
+//            System.out.println("JobHiringAgent.OfferRequestsServer.action");
             MessageTemplate msgTemplate = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             ACLMessage msg = myAgent.receive(msgTemplate);
             if (msg != null) {
                 String[] content = msg.getContent().split(",");
                 if (content.length != 2) {
-                    throw new IllegalArgumentException("Invalid message format");
+                    throw new IllegalArgumentException(getLocalName() + " log: Invalid message format");
                 }
                 ACLMessage reply = msg.createReply();
                 int rating = Integer.parseInt(content[0].trim());
@@ -82,7 +87,7 @@ public class JobAgent extends Agent {
                     reply.setContent(String.valueOf(salary));
                 } else {
                     reply.setPerformative(ACLMessage.REFUSE);
-                    reply.setContent("Not enough rating or age");
+                    reply.setContent(getLocalName() + " log: Not enough rating or age of agent " + msg.getSender().getLocalName());
                 }
                 myAgent.send(reply);
             } else {
@@ -97,13 +102,13 @@ public class JobAgent extends Agent {
     private class AssignCandidateServer extends CyclicBehaviour {
         @Override
         public void action() {
-            System.out.println("AssignCandidateServer.OfferRequestsServer.action");
+//            System.out.println("AssignCandidateServer.OfferRequestsServer.action");
             MessageTemplate msgTemplate = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
             ACLMessage msg = myAgent.receive(msgTemplate);
             if (msg != null) {
                 String[] content = msg.getContent().split(",");
                 if (content.length != 2) {
-                    throw new IllegalArgumentException("Invalid message format");
+                    throw new IllegalArgumentException(getLocalName() + " log: Invalid message format");
                 }
                 int rating = Integer.parseInt(content[0].trim());
                 int age = Integer.parseInt(content[1].trim());
@@ -111,10 +116,10 @@ public class JobAgent extends Agent {
 
                 if(!assigned) {
                     reply.setPerformative(ACLMessage.INFORM);
-                    System.out.println(getLocalName() + " is assign agent " + msg.getSender().getLocalName() + " with salary: " + salary);
+                    System.out.println(getLocalName() + " appoints a candidate " + msg.getSender().getLocalName() + " with salary: " + salary);
                 } else {
                     reply.setPerformative(ACLMessage.FAILURE);
-                    reply.setContent("Not available for this time...");
+                    reply.setContent(getLocalName() + " is not available for this time...");
                 }
                 assigned = true;
                 myAgent.send(reply);
